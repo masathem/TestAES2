@@ -5,12 +5,14 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.Key;
+import java.util.Scanner;
 
 public class MyClass {
 
-    public static void main(String[] args) throws DecoderException {
+    public static void main(String[] args) throws DecoderException, IOException {
 //        String test = "hello world";
 //        char[] result = Hex.encodeHex(test.getBytes());
 //        System.out.println("edcode HEX:" + new String(result));
@@ -36,33 +38,140 @@ public class MyClass {
 //        }
 //        System.out.println(piccHexBuilder);
 
-        String picc="DA8CE35F108EC158A6276F17A125E21E";
+        Scanner scanner = new Scanner(System.in);
 
-        byte[] piccByte = Hex.decodeHex(picc);
+        while(true) {
+            System.out.println("please input picc Data 16 String:");
+            String piccData16 = scanner.nextLine();
 
-        String ivStr="00000000000000000000000000000000";
+//        String piccData16="4441384345333546313038454331353841363237364631374131323545323145";
 
-        try {
-            SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(keyHexString), "AES");
-            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-            IvParameterSpec ips = new IvParameterSpec(Hex.decodeHex(ivStr));
-            cipher.init(Cipher.DECRYPT_MODE, keySpec,ips);
-            byte[] resultDes = cipher.doFinal(piccByte);
-            ByteBuffer byteBuffer=ByteBuffer.allocate(resultDes.length);
-            byteBuffer.put(resultDes);
-            System.out.println(Hex.encodeHexString(resultDes).toUpperCase());
-            byte[] Tag=new byte[1];
-            byte[] UID=new byte[7];
-            byte[] Counter=new byte[3];
-            byteBuffer.get(0,Tag);
-            byteBuffer.get(1,UID);
-            byteBuffer.get(7,Counter);
-            System.out.println("TagData:"+Hex.encodeHexString(Tag).toUpperCase());
-            //System.out.println("TagData:"+Hex.encodeHexString(byteBuffer.).toUpperCase());
-            System.out.println("UID:"+Hex.encodeHexString(UID).toUpperCase());
-            System.out.println("Counter:"+Hex.encodeHexString(Counter).toUpperCase());
-        } catch (Exception e) {
-            e.printStackTrace();
+            String picc = HexStringUtil.hexString2Str(piccData16);
+
+            System.out.println("input is:" + piccData16);
+//        String picc="DA8CE35F108EC158A6276F17A125E21E";
+
+            byte[] piccByte = Hex.decodeHex(picc);
+
+            String ivStr = "00000000000000000000000000000000";
+
+            try {
+                SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(keyHexString), "AES");
+                Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+                IvParameterSpec ips = new IvParameterSpec(Hex.decodeHex(ivStr));
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, ips);
+                byte[] resultDes = cipher.doFinal(piccByte);
+                ByteBuffer byteBuffer = ByteBuffer.allocate(resultDes.length);
+                byteBuffer.put(resultDes);
+                System.out.println(Hex.encodeHexString(resultDes).toUpperCase());
+                byte[] Tag = new byte[1];
+                byte[] UID = new byte[7];
+                byte[] Counter = new byte[3];
+                byteBuffer.get(0, Tag);
+                byteBuffer.get(1, UID);
+                byteBuffer.get(7, Counter);
+                System.out.println("TagData:" + Hex.encodeHexString(Tag).toUpperCase());
+                //System.out.println("TagData:"+Hex.encodeHexString(byteBuffer.).toUpperCase());
+                System.out.println("UID:" + Hex.encodeHexString(UID).toUpperCase());
+                System.out.println("Counter:" + Hex.encodeHexString(Counter).toUpperCase());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
+    }
+
+
+
+    public class HexStringUtil {
+
+
+        private static String hexCharsStr = "0123456789ABCDEF";
+
+
+        private static char[] hexCharsArr = hexCharsStr.toCharArray();
+
+        /**
+         * 0123456789ABCDEF -> 0 ~ 15
+         */
+        private static byte oneHexChar2Byte(char c) {
+            byte b = (byte) hexCharsStr.indexOf(c);
+            return b;
+        }
+
+        /**
+         * 0 ~ 15 -> 0123456789ABCDEF
+         */
+        private static char byte2OneHexChar(byte b) {
+            char c = hexCharsArr[b];
+            return c;
+        }
+
+        /**
+         *
+         */
+        private static byte twoHexChar2Byte(char high, char low) {
+            byte b = (byte) (oneHexChar2Byte(high) << 4 | oneHexChar2Byte(low));
+            return b;
+        }
+
+        /**
+         *
+         */
+        private static char[] byte2TwoHexChar(byte b) {
+            char[] chars = new char[2];
+
+
+            byte high4bit = (byte) ((b & 0x0f0) >> 4);
+            chars[0] = byte2OneHexChar((byte) high4bit);
+
+
+            byte low4bit = (byte) (b & 0x0f);
+            chars[1] = byte2OneHexChar((byte) low4bit);
+
+            return chars;
+        }
+
+        /**
+         *
+         */
+        public static String str2HexString(String str) {
+            byte[] bytes = str.getBytes();
+            return bytes2HexString(bytes);
+        }
+
+        /**
+         *
+         */
+        public static final String bytes2HexString(byte[] bytes) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < bytes.length; i++) {
+                char[] chars = byte2TwoHexChar(bytes[i]);
+                sb.append(new String(chars));
+            }
+            return sb.toString();
+        }
+
+        /**
+         *
+         */
+        public static String hexString2Str(String hexStr) {
+            byte[] bytes = hexString2Bytes(hexStr);
+            return new String(bytes);
+        }
+
+        /**
+         *
+         */
+        public static byte[] hexString2Bytes(String hexStr) {
+            int length = (hexStr.length() / 2);
+            byte[] bytes = new byte[length];
+            char[] charArr = hexStr.toCharArray();
+            for (int i = 0; i < length; i++) {
+                int position = i * 2;
+                bytes[i] = twoHexChar2Byte(charArr[position], charArr[position + 1]);
+            }
+            return bytes;
+        }
+
     }
 }
