@@ -12,7 +12,7 @@ import java.util.Scanner;
 import java.util.regex.*;
 
 
-public class MyClass {
+public class DecryptENCFIleData {
 
     public static void main(String[] args) throws DecoderException, IOException {
 //        String test = "hello world";
@@ -39,6 +39,7 @@ public class MyClass {
 //            piccHexBuilder.append(Integer.toHexString(charValue));
 //        }
 //        System.out.println(piccHexBuilder);
+
 
         Scanner scanner = new Scanner(System.in);
 
@@ -80,6 +81,16 @@ public class MyClass {
                 //System.out.println("TagData:"+Hex.encodeHexString(byteBuffer.).toUpperCase());
                 System.out.println("UID:" + Hex.encodeHexString(UID).toUpperCase());
                 System.out.println("Counter:" + Hex.encodeHexString(Counter).toUpperCase());
+
+                String sv1="C33C00010080"+Hex.encodeHexString(UID).toUpperCase()+ Hex.encodeHexString(Counter).toUpperCase();
+
+                String KSes=Mac(keyHexString,sv1);
+
+                String Ive=IVe(KSes,Hex.encodeHexString(Counter).toUpperCase());
+
+                //decrypt final
+
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
