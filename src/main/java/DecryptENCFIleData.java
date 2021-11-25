@@ -1,14 +1,20 @@
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
-import javax.crypto.Cipher;
-import javax.crypto.Mac;
+import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Security;
 import java.util.Scanner;
 import java.util.regex.*;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+//
 
 
 public class DecryptENCFIleData {
@@ -44,7 +50,7 @@ public class DecryptENCFIleData {
 //
 //        System.out.println("please input picc Data 16/Hex String:");
 //        String piccData16 = scanner.nextLine();
-        String piccData16="FDE4AFA99B5C820A2C1BB0F1C792D0EB";
+        String piccData16="16F0C484A0E8D0F385192005B9C9CA43";
         String picc = piccData16;
 //        String piccData16="4441384345333546313038454331353841363237364631374131323545323145";
 
@@ -83,11 +89,22 @@ public class DecryptENCFIleData {
 
             String sv1 = "C33C00010080" + Hex.encodeHexString(UID).toUpperCase() + Hex.encodeHexString(Counter).toUpperCase();
             System.out.println("sv1:"+sv1);
-            String KSes = MacFormat(keyHexString, sv1);
-            System.out.println("kes:" + KSes);
-            String Ive = IVe(KSes, ivStr, Hex.encodeHexString(Counter).toUpperCase() + "0000000000000");
+
+//            String KSes = MacFormat(keyHexString, sv1);
+//            System.out.println("kes:" + KSes);
+
+            byte[] ksesByte=Corgi.CalculationMac(Hex.decodeHex(keyHexString),Hex.decodeHex(sv1));
+            System.out.println("kes2:"+Hex.encodeHexString(ksesByte));
+
+            String Ive = IVe(ksesByte, ivStr, Hex.encodeHexString(Counter).toUpperCase() + "00000000000000000000000000");
             System.out.println("IVE:" + Ive);
             //decrypt final
+
+            String FileData="34EE75BB330B6134B10F574B4A3264F3";
+            String result=DecrytFile(ksesByte,Ive,FileData);
+
+            System.out.println("File Data:"+result);
+
 
 
         } catch (Exception e) {
@@ -95,20 +112,31 @@ public class DecryptENCFIleData {
         }
     }
 
-    private static String IVe(String kSes, String ivrS, String toUpperCase) throws Exception {
-        SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(kSes), "AES");
+    private static String DecrytFile(byte[] ksesByte, String ive, String fileData) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException, DecoderException, IllegalBlockSizeException, BadPaddingException {
+        SecretKeySpec keySpec = new SecretKeySpec(ksesByte, "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        IvParameterSpec ips = new IvParameterSpec(Hex.decodeHex(ive));
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ips);
+        byte[] resultDes = cipher.doFinal(Hex.decodeHex(fileData));
+        return Hex.encodeHexString(resultDes);
+    }
+
+    private static String IVe(byte[] kSes, String ivrS, String toUpperCase) throws Exception {
+        SecretKeySpec keySpec = new SecretKeySpec(kSes, "AES");
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
         IvParameterSpec ips = new IvParameterSpec(Hex.decodeHex(ivrS));
-        cipher.init(Cipher.DECRYPT_MODE, keySpec, ips);
-        byte[] resultDes = cipher.doFinal(toUpperCase.getBytes());
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ips);
+        byte[] resultDes = cipher.doFinal(Hex.decodeHex(toUpperCase));
         return Hex.encodeHexString(resultDes);
     }
 
     private static String MacFormat(String keyHexString, String sv1) throws Exception {
-        SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(keyHexString), "HmacMD5");
+        System.out.println("K ready key:"+keyHexString);
+        Security.addProvider(new BouncyCastleProvider());
+        SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(keyHexString), "HmacMD4");
         Mac mac = Mac.getInstance(keySpec.getAlgorithm());
         mac.init(keySpec);
-        byte[] resultBytes = mac.doFinal(sv1.getBytes());
+        byte[] resultBytes = mac.doFinal(Hex.decodeHex(sv1));
         return Hex.encodeHexString(resultBytes);
     }
 
