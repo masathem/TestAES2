@@ -2,12 +2,11 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
 import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
+import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.security.Key;
 import java.util.Scanner;
 import java.util.regex.*;
 
@@ -41,62 +40,77 @@ public class DecryptENCFIleData {
 //        System.out.println(piccHexBuilder);
 
 
-        Scanner scanner = new Scanner(System.in);
-
-        while(true) {
-            System.out.println("please input picc Data 16/Hex String:");
-            String piccData16 = scanner.nextLine();
-            String picc =piccData16;
+//        Scanner scanner = new Scanner(System.in);
+//
+//        System.out.println("please input picc Data 16/Hex String:");
+//        String piccData16 = scanner.nextLine();
+        String piccData16="FDE4AFA99B5C820A2C1BB0F1C792D0EB";
+        String picc = piccData16;
 //        String piccData16="4441384345333546313038454331353841363237364631374131323545323145";
 
-            Pattern regex = Pattern.compile("(A|B|C|D|E|F)");
-            Matcher regexMatcher = regex.matcher(piccData16);
-            if (!regexMatcher.find()) {
-                // Successful match
-                picc = HexStringUtil.hexString2Str(piccData16);
-            }
-            System.out.println("input is:" + picc);
+        Pattern regex = Pattern.compile("(A|B|C|D|E|F)");
+        Matcher regexMatcher = regex.matcher(piccData16);
+        if (!regexMatcher.find()) {
+            // Successful match
+            picc = HexStringUtil.hexString2Str(piccData16);
+        }
+        System.out.println("input is:" + picc);
 //        String picc="DA8CE35F108EC158A6276F17A125E21E";
 
-            byte[] piccByte = Hex.decodeHex(picc);
+        byte[] piccByte = Hex.decodeHex(picc);
 
-            String ivStr = "00000000000000000000000000000000";
+        String ivStr = "00000000000000000000000000000000";
 
-            try {
-                SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(keyHexString), "AES");
-                Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
-                IvParameterSpec ips = new IvParameterSpec(Hex.decodeHex(ivStr));
-                cipher.init(Cipher.DECRYPT_MODE, keySpec, ips);
-                byte[] resultDes = cipher.doFinal(piccByte);
-                ByteBuffer byteBuffer = ByteBuffer.allocate(resultDes.length);
-                byteBuffer.put(resultDes);
-                System.out.println(Hex.encodeHexString(resultDes).toUpperCase());
-                byte[] Tag = new byte[1];
-                byte[] UID = new byte[7];
-                byte[] Counter = new byte[3];
-                byteBuffer.get(0, Tag);
-                byteBuffer.get(1, UID);
-                byteBuffer.get(7, Counter);
-                System.out.println("TagData:" + Hex.encodeHexString(Tag).toUpperCase());
-                //System.out.println("TagData:"+Hex.encodeHexString(byteBuffer.).toUpperCase());
-                System.out.println("UID:" + Hex.encodeHexString(UID).toUpperCase());
-                System.out.println("Counter:" + Hex.encodeHexString(Counter).toUpperCase());
+        try {
+            SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(keyHexString), "AES");
+            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+            IvParameterSpec ips = new IvParameterSpec(Hex.decodeHex(ivStr));
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ips);
+            byte[] resultDes = cipher.doFinal(piccByte);
+            ByteBuffer byteBuffer = ByteBuffer.allocate(resultDes.length);
+            byteBuffer.put(resultDes);
+            System.out.println(Hex.encodeHexString(resultDes).toUpperCase());
+            byte[] Tag = new byte[1];
+            byte[] UID = new byte[7];
+            byte[] Counter = new byte[3];
+            byteBuffer.get(0, Tag);
+            byteBuffer.get(1, UID);
+            byteBuffer.get(8, Counter);
+            System.out.println("TagData:" + Hex.encodeHexString(Tag).toUpperCase());
+            //System.out.println("TagData:"+Hex.encodeHexString(byteBuffer.).toUpperCase());
+            System.out.println("UID:" + Hex.encodeHexString(UID).toUpperCase());
+            System.out.println("Counter:" + Hex.encodeHexString(Counter).toUpperCase());
 
-                String sv1="C33C00010080"+Hex.encodeHexString(UID).toUpperCase()+ Hex.encodeHexString(Counter).toUpperCase();
+            String sv1 = "C33C00010080" + Hex.encodeHexString(UID).toUpperCase() + Hex.encodeHexString(Counter).toUpperCase();
+            System.out.println("sv1:"+sv1);
+            String KSes = MacFormat(keyHexString, sv1);
+            System.out.println("kes:" + KSes);
+            String Ive = IVe(KSes, ivStr, Hex.encodeHexString(Counter).toUpperCase() + "0000000000000");
+            System.out.println("IVE:" + Ive);
+            //decrypt final
 
-                String KSes=Mac(keyHexString,sv1);
 
-                String Ive=IVe(KSes,Hex.encodeHexString(Counter).toUpperCase());
-
-                //decrypt final
-
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
+    private static String IVe(String kSes, String ivrS, String toUpperCase) throws Exception {
+        SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(kSes), "AES");
+        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        IvParameterSpec ips = new IvParameterSpec(Hex.decodeHex(ivrS));
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ips);
+        byte[] resultDes = cipher.doFinal(toUpperCase.getBytes());
+        return Hex.encodeHexString(resultDes);
+    }
+
+    private static String MacFormat(String keyHexString, String sv1) throws Exception {
+        SecretKeySpec keySpec = new SecretKeySpec(Hex.decodeHex(keyHexString), "HmacMD5");
+        Mac mac = Mac.getInstance(keySpec.getAlgorithm());
+        mac.init(keySpec);
+        byte[] resultBytes = mac.doFinal(sv1.getBytes());
+        return Hex.encodeHexString(resultBytes);
+    }
 
 
     public class HexStringUtil {

@@ -75,7 +75,7 @@ public class MyClass {
                 byte[] Counter = new byte[3];
                 byteBuffer.get(0, Tag);
                 byteBuffer.get(1, UID);
-                byteBuffer.get(7, Counter);
+                byteBuffer.get(8, Counter);
                 System.out.println("TagData:" + Hex.encodeHexString(Tag).toUpperCase());
                 //System.out.println("TagData:"+Hex.encodeHexString(byteBuffer.).toUpperCase());
                 System.out.println("UID:" + Hex.encodeHexString(UID).toUpperCase());
